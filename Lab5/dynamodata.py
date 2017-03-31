@@ -1,0 +1,81 @@
+# *********************************************************************************************
+# Program to update dynamodb with latest data from mta feed. It also cleans up stale entried from db
+# Usage python dynamodata.py
+# *********************************************************************************************
+import json,time,sys
+import thread
+from collections import OrderedDict
+import threading
+from threading import Thread
+from botocore.exceptions import ClientError
+import boto3, boto
+from boto3.dynamodb.conditions import Key,Attr
+from boto.dynamodb2.fields import HashKey, RangeKey
+import boto.dynamodb2
+sys.path.append('../utils')
+import tripupdate,vehicle,alert,mtaUpdates1,aws
+import datetime
+# AWS ID
+ACCOUNT_ID = '780426777867'
+IDENTITY_POOL_ID = 'us-east-1:7c514cf7-9351-4f33-9d84-53a6cf76bc72'
+ROLE_ARN = 'arn:aws:iam::780426777867:role/Cognito_edisonDemoKinesisUnauth_Role'
+
+# Use cognito to get an identity.
+cognito = boto.connect_cognito_identity()
+cognito_id = cognito.get_id(ACCOUNT_ID, IDENTITY_POOL_ID)
+oidc = cognito.get_open_id_token(cognito_id['IdentityId'])
+
+# Further setup your STS using the code below
+sts = boto.connect_sts()
+assumedRoleObject = sts.assume_role_with_web_identity(ROLE_ARN, "XX", oidc['Token'])
+
+# table
+DYNAMODB_TABLE_NAME = 'MTA2'
+
+# DynamoDB
+client_dynamo = boto.dynamodb2.connect_to_region(
+        'us-east-1',
+        aws_access_key_id=assumedRoleObject.credentials.access_key,
+        aws_secret_access_key=assumedRoleObject.credentials.secret_key,
+        security_token=assumedRoleObject.credentials.session_token)
+from boto.dynamodb2.table import Table
+table_dynamo = Table(DYNAMODB_TABLE_NAME, connection=client_dynamo)
+try:
+    MTA2 = Table.create('MTA2', schema=[HashKey('index')], connection=client_dynamo)
+    time.sleep(20)
+except:
+    MTA2 = Table('MTA2', connection=client_dynamo)
+
+### YOUR CODE HERE ####
+def adding():
+    while(True):
+        start=time.time()
+        #print 'adding data...'
+        updates = mtaUpdates1.mtaUpdates()
+        tripupdates, alerts = updates.getTripUpdates()
+        time.sleep(2)
+        print len(tripupdates)
+        for i in range(0,len(tripupdates)):
+            if str(tripupdates[i].routeId)=='1' or str(tripupdates[i].routeId)=='2' or str(tripupdates[i].routeId)=='3':
+                if str(tripupdates[i].timeto96)!=None and str(tripupdates[i].timeto42)!=None:
+                    MTA2.put_item(data={
+                        'index' : str(time.time()),
+                        'timestamp' : str(tripupdates[i].vehicleData.timestamp),
+                        'starttime' : str(tripupdates[i].starttime),
+                        'routeId' : str(tripupdates[i].routeId),
+                        'dayofweek' : str(tripupdates[i].vehicleData.dayofweek),
+                        'timeto96' : str(tripupdates[i].timeto96),
+                        'timeto42' : str(tripupdates[i].timeto42)
+                    })
+                    time.sleep(0.1)
+        end = time.time()
+        print 'duration: '+ str(end-start)
+        time.sleep(2)
+
+
+response = MTA2.scan(timeto96__eq = 'None')
+for i in response:
+    #i.values()[3]
+    MTA2.delete_item(index=str(i.values()[1]))
+
+adding()

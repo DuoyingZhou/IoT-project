@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <style>
+#map {
+    height: 70%;
+    width: 100%;
+}
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+</style>
+<form action="" method="post" id="form1">
+{% csrf_token %}
+  city1:
+  <select name="source" id="start">
+    <option value="None">None</option>
+    <option value="Chicago,us">Chicago,us</option>
+    <option value="Orlando,us">Orlando,us</option>
+    <option value="New York,us">New York,us</option>
+    <option value="Los Angeles,us">Los Angeles,us</option>
+  </select>
+  <br>
+  city2:
+  <select name="destination" id="end">
+    <option value="None">None</option>
+    <option value="Chicago,us">Chicago,us</option>
+    <option value="Orlando,us">Orlando,us</option>
+    <option value="New York,us">New York,us</option>
+    <option value="Los Angeles,us">Los Angeles,us</option>
+  </select>
+<input type="button" value="go map" onclick="google.charts.setOnLoadCallback(drawTable)" />
+
+</form>
+  <br>
+
+<input type="hidden" id="search1_name" value="{{search1.name}}" />
+<input type="hidden" id="search1_temp" value="{{search1.temp}}" />
+<input type="hidden" id="search1_temp_kf" value="{{search1.temp_kf}}" />
+<input type="hidden" id="search1_temp_max" value="{{search1.temp_max}}" />
+<input type="hidden" id="search1_temp_min" value="{{search1.temp_min}}" />
+<input type="hidden" id="search2_name" value="{{search2.name}}" />
+<input type="hidden" id="search2_temp" value="{{search2.temp}}" />
+<input type="hidden" id="search2_temp_kf" value="{{search2.temp_kf}}" />
+<input type="hidden" id="search2_temp_max" value="{{search2.temp_max}}" />
+<input type="hidden" id="search2_temp_min" value="{{search2.temp_min}}" />
+
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDxvKU8oWnu88eyySQ2STQgtJUBu-YrPAY&&callback=initMap">
+
+</script>
+<script>
+google.charts.setOnLoadCallback(drawTable)
+</script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['table']});
+      function drawTable() {
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'name');
+
+        data.addColumn('string', 'temp');
+
+        data.addColumn('string', 'temp_kf');
+	data.addColumn('string', 'temp_max');
+	data.addColumn('string', 'temp_min');
+
+
+        data.addRows([
+
+          [document.getElementById('search1_name').value,document.getElementById('search1_temp').value ,document.getElementById('search1_temp_kf').value,document.getElementById('search1_temp_max').value, document.getElementById('search1_temp_min').value],
+	[document.getElementById('search2_name').value,document.getElementById('search2_temp').value ,document.getElementById('search2_temp_kf').value,document.getElementById('search2_temp_max').value, document.getElementById('search2_temp_min').value],
+
+   
+
+        ]);
+
+
+
+        var table = new google.visualization.Table(document.getElementById('table_div'));
+
+ table.draw(data, {showRowNumber: true, width: '100%', height: '100%'});
+
+
+
+      var directionsService = new google.maps.DirectionsService;
+
+    var directionsDisplay = new google.maps.DirectionsRenderer;
+
+    var map = new google.maps.Map(document.getElementById('map'), {
+
+      zoom: 7,
+
+      center: {lat: 41.85, lng: -87.65}
+
+    });
+
+    directionsDisplay.setMap(map);
+
+    
+
+    
+
+    directionsService.route({
+
+      origin: document.getElementById('start').value,
+
+      destination: document.getElementById('end').value,
+
+      travelMode: google.maps.TravelMode.DRIVING
+
+    }, function(response, status) {
+
+        if (status === 'OK') {
+
+          directionsDisplay.setDirections(response);
+
+        } else {
+
+          window.alert('Directions request failed due to ' + status);
+
+        }
+
+      });
+
+      
+
+      }
+
+    </script>
+
+  </head>
+
+  <body>
+
+    <div id="table_div"></div>
+
+    <div id="map"></div>
+
+  </body>
+
+</html>
+
+
+
